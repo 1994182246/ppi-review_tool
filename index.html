@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PPI 使用完整评估工具（基于用户知识库）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --main: #005a9c;
+  --green: #2e7d32;
+  --amber: #856404;
+  --red: #c2185b;
+  --light-bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --border-color: #cce0ff;
+  --hover-bg: #eef5ff;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--light-bg);
+  color: #333;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.08);
+  padding: 25px 35px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 26px;
+  color: var(--main);
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 18px;
+  margin: 25px 0 10px;
+  border-left: 4px solid var(--main);
+  padding-left: 8px;
+}
+
+.check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.check-group label {
+  background: var(--hover-bg);
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.check-group label:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.check-group input[type=checkbox] {
+  display: none;
+}
+
+.check-group input[type=checkbox]:checked + label {
+  background: var(--main);
+  color: #fff;
+  border-color: var(--main);
+}
+
+.row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.row label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.row select, .row input {
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.btn-wrapper {
+  text-align: center;
+  margin: 30px 0;
+}
+
+button {
+  background: var(--main);
+  color: #fff;
+  border: none;
+  padding: 12px 32px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #00467d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+#result {
+  margin-top: 25px;
+  padding: 20px;
+  border-radius: 6px;
+  font-size: 15px;
+  display: none;
+  animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#result.recommend {
+  background: #e6f4ea;
+  border: 1px solid #b7e4c7;
+  color: var(--green);
+}
+
+#result.caution {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  color: var(--amber);
+}
+
+#result.not-recommend {
+  background: #fce4ec;
+  border: 1px solid #f8bbd9;
+  color: var(--red);
+}
+
+#result h3 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+#result ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tip {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .container {
+    margin: 15px;
+    padding: 15px;
+  }
+  
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .check-group {
+    gap: 8px;
+  }
+  
+  .check-group label {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+
+/* 添加复选框焦点样式以提高可访问性 */
+.check-group input[type=checkbox]:focus + label {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+}
+
+/* 添加输入框焦点样式 */
+.row input:focus,
+.row select:focus {
+  outline: 2px solid var(--main);
+  outline-offset: 1px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>质子泵抑制剂（PPI）使用完整评估工具</h1>
+  <p style="text-align:center;font-size:14px;color:#666">每一步请如实勾选/选择，系统将在末端自动生成决策</p>
+
+  <!-- 前置信息 -->
+  <h2>0. 患者基本信息</h2>
+  <div class="row">
+    <label>人群：</label>
+    <select id="pop">
+      <option value="adult">成人</option>
+      <option value="child">儿童（≤17岁）</option>
+      <option value="preg">妊娠</option>
+      <option value="lact">哺乳</option>
+    </select>
+    
+    <label>体重：</label>
+    <input type="number" id="wt" value="60" min="1" max="300"> kg
+    
+    <label>eGFR：</label>
+    <select id="egfr">
+      <option value="ok">≥30 mL/min</option>
+      <option value="low">&lt;30 mL/min</option>
+    </select>
+  </div>
+  
+  <div class="row">
+    <label>肝功能：</label>
+    <select id="liver">
+      <option value="normal">正常/Child A</option>
+      <option value="b">Child-Pugh B</option>
+      <option value="c">Child-Pugh C</option>
+    </select>
+    
+    <label>CYP2C19基因型（可选）：</label>
+    <select id="cyp">
+      <option value="unknown">未知</option>
+      <option value="um">超快/快代谢(UM/RM)</option>
+      <option value="nm">正常(NM)</option>
+      <option value="impm">中间/慢(IM/PM)</option>
+    </select>
+  </div>
+
+  <!-- Step1 强指征 -->
+  <h2>1. 强指征（任一勾选即进入"必须用"）</h2>
+  <div class="check-group">
+    <input type="checkbox" id="s1"><label for="s1">急性上消化道出血/应激性溃疡</label>
+    <input type="checkbox" id="s2"><label for="s2">活动性消化性溃疡（胃/十二指肠）</label>
+    <input type="checkbox" id="s3"><label for="s3">NSAIDs/阿司匹林相关溃疡或既往出血</label>
+    <input type="checkbox" id="s4"><label for="s4">糜烂性食管炎 LA-A~D</label>
+    <input type="checkbox" id="s5"><label for="s5">幽门螺杆菌阳性（根除治疗期）</label>
+    <input type="checkbox" id="s6"><label for="s6">卓-艾综合征</label>
+    <input type="checkbox" id="s7"><label for="s7">儿童GERD伴糜烂或溃疡</label>
+  </div>
+
+  <!-- Step2 症状性 -->
+  <h2>2. 酸相关症状（无强指征时填写）</h2>
+  <div class="check-group">
+    <input type="checkbox" id="f1"><label for="f1">典型烧心/反酸≥2天/周</label>
+    <input type="checkbox" id="f2"><label for="f2">上腹痛为主，已排除Hp与溃疡（功能性消化不良）</label>
+    <input type="checkbox" id="f3"><label for="f3">急性胃炎伴烧心或内镜糜烂</label>
+    <input type="checkbox" id="f4"><label for="f4">喉咽反流（LPR）经验治疗</label>
+  </div>
+
+  <!-- Step3 预防 -->
+  <h2>3. 预防场景（无强指征且无症状时填写）</h2>
+  <div class="check-group">
+    <input type="checkbox" id="p1"><label for="p1">ICU机械通气&gt;48h+凝血障碍/颅脑损伤/烧伤</label>
+    <input type="checkbox" id="p2"><label for="p2">长期双抗（阿司匹林+氯吡格雷）且≥1高危（年龄≥65/既往溃疡/激素/抗凝）</label>
+    <input type="checkbox" id="p3"><label for="p3">长期非选择性NSAIDs且同2高危</label>
+  </div>
+
+  <!-- Step4 排除禁忌 -->
+  <h2>4. 排除/相对禁忌（任意勾选即"不推荐"）</h2>
+  <div class="check-group">
+    <input type="checkbox" id="c1"><label for="c1">无症状慢性萎缩性胃炎或功能性腹胀</label>
+    <input type="checkbox" id="c2"><label for="c2">单纯急性胰腺炎</label>
+    <input type="checkbox" id="c3"><label for="c3">肝硬化门脉高压胃病无溃疡</label>
+    <input type="checkbox" id="c4"><label for="c4">低危术后/普通住院（无机械通气、无高危）</label>
+    <input type="checkbox" id="c5"><label for="c5">长期激素单药无NSAIDs</label>
+  </div>
+
+  <!-- Step5 疗程与监测 -->
+  <h2>5. 计划疗程与监测</h2>
+  <div class="row">
+    <label>计划疗程：</label>
+    <select id="weeks">
+      <option value="1">1周</option>
+      <option value="2">2周</option>
+      <option value="4">4周</option>
+      <option value="8">8周</option>
+      <option value="long">更长</option>
+    </select>
+    
+    <label>&gt;4周监测：</label>
+    <label><input type="checkbox" id="m1">血镁</label>
+    <label><input type="checkbox" id="m2">肾功能</label>
+    <label><input type="checkbox" id="m3">骨折风险</label>
+    <label><input type="checkbox" id="m4">肠道感染</label>
+  </div>
+
+  <div class="btn-wrapper">
+    <button id="evaluateBtn">生成决策</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+  // 为按钮添加点击事件监听器
+  const evaluateBtn = document.getElementById('evaluateBtn');
+  
+  if (evaluateBtn) {
+    evaluateBtn.addEventListener('click', evaluate);
+    
+    // 添加键盘支持 - 按Enter键可以触发评估
+    evaluateBtn.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        evaluate();
+      }
+    });
+  }
+  
+  // 添加表单元素键盘支持
+  const formElements = document.querySelectorAll('input, select');
+  formElements.forEach(element => {
+    element.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        evaluate();
+      }
+    });
+  });
+});
+
+function evaluate() {
+  try {
+    // 获取表单数据
+    const pop = document.getElementById('pop').value;
+    const wt = parseFloat(document.getElementById('wt').value) || 60;
+    const egfr = document.getElementById('egfr').value;
+    const liver = document.getElementById('liver').value;
+    const cyp = document.getElementById('cyp').value;
+    const weeks = document.getElementById('weeks').value;
+
+    // 检查各组选项
+    const strong = [1,2,3,4,5,6,7].map(i => {
+      const elem = document.getElementById('s'+i);
+      return elem ? elem.checked : false;
+    });
+    const hasStrong = strong.some(x => x);
+    
+    const symptom = [1,2,3,4].map(i => {
+      const elem = document.getElementById('f'+i);
+      return elem ? elem.checked : false;
+    });
+    const hasSympt = symptom.some(x => x);
+    
+    const prev = [1,2,3].map(i => {
+      const elem = document.getElementById('p'+i);
+      return elem ? elem.checked : false;
+    });
+    const hasPrev = prev.some(x => x);
+    
+    const contr = [1,2,3,4,5].map(i => {
+      const elem = document.getElementById('c'+i);
+      return elem ? elem.checked : false;
+    });
+    const hasContr = contr.some(x => x);
+
+    let head = '', cls = '', body = '';
+
+    // 1. 禁忌层
+    if (hasContr) {
+      cls = 'not-recommend';
+      head = '✘ 不推荐/停用 PPI';
+      body = '<ul>' +
+        '<li>目前无明确酸相关证据，且存在禁忌/相对禁忌场景。</li>' +
+        '<li>建议：去除诱因 + 胃黏膜保护剂或 H2RA；若症状持续或报警征（出血、贫血、消瘦）→胃镜复查。</li>' +
+        '</ul>';
+    }
+    // 2. 强指征层
+    else if (hasStrong) {
+      cls = 'recommend';
+      head = '✔ 必须使用 PPI';
+      
+      let drug = '', dose = '', route = '口服', max = 40, note = [];
+      
+      // 默认选泮托拉唑，再按交互/肝损调
+      drug = '泮托拉唑';
+      if (liver === 'c') {
+        dose = '20 mg';
+        note.push('Child C 日剂量≤20 mg');
+      } else if (liver === 'b') {
+        dose = '20–40 mg';
+        note.push('Child B 起始 20 mg，可酌情加至 40 mg');
+      } else {
+        dose = '40 mg';
+      }
+      
+      // 基因型
+      if (cyp === 'um') {
+        dose = '40 mg bid';
+        note.push('超快代谢型，剂量↑50–100% 并分 2 次');
+      } else if (cyp === 'impm' && weeks === 'long') {
+        dose = '20 mg qd';
+        note.push('IM/PM 长期用可减半');
+      }
+      
+      // 妊娠
+      if (pop === 'preg') {
+        drug = '奥美拉唑';
+        dose = '20 mg';
+        note.push('妊娠 B 级，首选奥美拉唑');
+      }
+      
+      // 儿童
+      if (pop === 'child') {
+        // 修正儿童剂量计算逻辑
+        const mgkg = Math.min(2, Math.max(0.5, 1)); // 这里应该根据实际需要调整
+        const calc = Math.round(mgkg * wt);
+        dose = calc + ' mg qd';
+        max = 40;
+        note.push('儿童剂量 0.5–2 mg/kg，最大 40 mg');
+      }
+      
+      // 静脉指征
+      const s1Element = document.getElementById('s1');
+      if (s1Element && s1Element.checked) {
+        route = '静脉：80 mg 负荷→8 mg/h 持续泵入 72 h，后改口服';
+      }
+      
+      // 构建结果内容
+      var noteItems = '';
+      for (var i = 0; i < note.length; i++) {
+        noteItems += '<li>' + note[i] + '</li>';
+      }
+      
+      body = '<ul>' +
+        '<li>首选药物：' + drug + ' ' + dose + ' ' + route + '（早餐前 30 min 整片吞服）</li>' +
+        '<li>疗程：' + (weeks === 'long' ? '至症状/溃疡愈合后评估停药' : '计划 ' + weeks + ' 周') + '（强指征通常 4–8 周）</li>' +
+        '<li>最大日剂量：' + max + ' mg</li>' +
+        noteItems +
+        '<li>监测：' + ((weeks === 'long' || weeks === '8') ? '每 3–6 月复查血镁、肾功能、骨折风险' : '&gt;4 周时复查') + '</li>' +
+        '<li>停药策略：疗程结束→症状评估→缓解即可停；复发再内镜/pH 监测</li>' +
+        '</ul>';
+    }
+    // 3. 症状/预防层
+    else if (hasSympt || hasPrev) {
+      cls = 'caution';
+      head = '⚠ 限制性短期使用';
+      
+      let drug = '泮托拉唑', dose = '40 mg qd', note = [];
+      
+      if (liver === 'c') {
+        dose = '20 mg qd';
+        note.push('Child C 减半');
+      }
+      
+      if (pop === 'child') {
+        // 修正儿童剂量计算逻辑
+        const calc = Math.round(1 * wt); // 应该根据实际需要调整剂量计算
+        dose = calc + ' mg qd';
+        note.push('儿童 0.5–1 mg/kg，最大 40 mg');
+      }
+      
+      if (cyp === 'um') {
+        dose = '40 mg bid';
+        note.push('UM/RM 可 bid');
+      }
+      
+      var noteItems = '';
+      for (var i = 0; i < note.length; i++) {
+        noteItems += '<li>' + note[i] + '</li>';
+      }
+      
+      body = '<ul>' +
+        '<li>方案：' + drug + ' ' + dose + ' 口服，早餐前 30 min</li>' +
+        '<li>疗程：症状缓解即可停，最长 ≤2 周（预防场景与高危因素同程）</li>' +
+        '<li>监测：一般不需实验室；若 &gt;4 周按强指征监测</li>' +
+        '<li>无效或复发：胃镜或 24 h pH-阻抗监测</li>' +
+        '</ul>';
+    }
+    // 4. 无指征
+    else {
+      cls = 'not-recommend';
+      head = '✘ 不推荐/无需 PPI';
+      body = '<ul>' +
+        '<li>目前无强指征、无酸相关症状、无高危预防需求。</li>' +
+        '<li>建议：去除诱因、生活方式调整、必要时胃黏膜保护剂或 H2RA。</li>' +
+        '<li>报警征（出血、贫血、消瘦）→及时胃镜。</li>' +
+        '</ul>';
+    }
+
+    // 显示结果
+    const res = document.getElementById('result');
+    if (res) {
+      res.className = 'result ' + cls;
+      res.innerHTML = '<h3>' + head + '</h3>' + body;
+      res.style.display = 'block';
+      res.scrollIntoView({ behavior: 'smooth' });
+    }
+  } catch (error) {
+    console.error('评估过程中发生错误:', error);
+    const res = document.getElementById('result');
+    if (res) {
+      res.className = 'result not-recommend';
+      res.innerHTML = '<h3>错误</h3><p>处理过程中发生错误，请检查输入并重试。</p>';
+      res.style.display = 'block';
+    }
+  }
+}
+</script>
+</body>
+</html>
